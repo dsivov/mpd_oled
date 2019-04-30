@@ -328,6 +328,13 @@ void mpd_info::set_vals_mpd(struct mpd_connection *conn)
     song_elapsed_secs = mpd_status_get_elapsed_time(status);
     song_total_secs = mpd_status_get_total_time(status);
     kbitrate = mpd_status_get_kbit_rate(status);
+    format = mpd_status_get_audio_format(status);
+    if (format)
+    {
+       samplerate = format->sample_rate;
+       bits = format->bits;    
+    }
+    
   }
 
   mpd_status_free(status);
@@ -426,6 +433,11 @@ float mpd_info::get_progress() const
   return song_total_secs ? (float)song_elapsed_secs/song_total_secs : 0.0;
 }
 
+int mpd_info::get_elapsed() const
+{
+  return song_elapsed_secs;
+}
+
 string mpd_info::get_kbitrate_str() const
 {
   int rate = std::min(kbitrate, 9999);
@@ -435,6 +447,13 @@ string mpd_info::get_kbitrate_str() const
   return str;
 } 
 
+string mpd_info::get_format_str() const
+{
+   const size_t str_len = 11; 
+   char str[str_len];
+   snprintf(str, str_len, "F:%2d/%2d", samplerate/1000,bits);
+   return str;
+}
 
 int mpd_info::get_volume() const { return volume; }
 
@@ -447,6 +466,10 @@ int mpd_info::get_elapsed_secs() const { return song_elapsed_secs; }
 int mpd_info::get_total_secs() const { return song_total_secs; }
 
 int mpd_info::get_kbitrate() const { return kbitrate; }
+
+int mpd_info::get_samplerate() const { return samplerate; }
+
+int mpd_info::get_bits() const { return bits; }
 
 enum mpd_state mpd_info::get_state() const { return state; }
 

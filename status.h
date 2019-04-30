@@ -37,6 +37,9 @@ private:
   int song_elapsed_secs;
   int song_total_secs;
   int kbitrate;
+  int samplerate;
+  int bits;
+  const mpd_audio_format* format;
   enum mpd_state state;
   Counter last_change;
 
@@ -59,13 +62,16 @@ public:
   int get_elapsed_secs() const;       // Elapsed time of song in seconds
   int get_total_secs() const;         // Total time of song in seconds
   int get_kbitrate() const;           // KBitrate
+  int get_samplerate() const;           // KBitrate
+  int get_bits() const;           // KBitrate
   std::string get_kbitrate_str() const; // KBitrate as string
+  std::string get_format_str() const;
 
 
   std::string get_elapsed_time() const;  // Elapsed time of song: hh:mm:ss
   std::string get_total_time() const; // Total time of song: hh:mm:ss
   float get_progress() const;         // Progress through song: 0.00 - 1.00
-  
+  int get_elapsed() const; 
   enum mpd_state get_state() const;   // MPD_STATE_: UNKNOWN, STOP, PAUSE, START
 };
 

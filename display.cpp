@@ -90,6 +90,20 @@ void draw_time(ArduiPi_OLED &display, int start_x, int start_y, int sz,
      display.fillRect(start_x+W*N*sz, start_y, sz, sz, WHITE);
 }
 
+void draw_elap(ArduiPi_OLED &display, int start_x, int start_y, int sz, int prog)
+{
+  display.setTextColor(WHITE);
+
+  const size_t STR_SZ = 32;
+  char str[STR_SZ];
+  int mins =  prog/60;
+  int secs = prog - (mins*60);
+  snprintf(str, STR_SZ, "%02d:%02d", mins, secs);
+
+  display.setCursor(start_x, start_y);
+  display.setTextSize(sz);
+  print(display, str);
+}
 
 // Draw date - DD-MM-YYYY
 void draw_date(ArduiPi_OLED &display, int start_x, int start_y, int sz)
