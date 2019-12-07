@@ -371,15 +371,15 @@ void draw_spect_display(ArduiPi_OLED &display, const display_info &disp_info)
   draw_text(display, 128-6*W, 0, 20, disp_info.status.get_format_str());
   int clock_offset = (disp_info.clock_format < 2) ? 0 : -2;
   //draw_time(display, 128-10*W+clock_offset, 2*H, 2, disp_info.clock_format);
-  draw_elap(display, 0, 0, 3, disp_info.status.get_total_secs() - disp_info.status.get_elapsed_secs());
-  
+  draw_elap(display, 128-6*W, 14, 1, disp_info.status.get_total_secs() - disp_info.status.get_elapsed_secs());
+  draw_elap(display, 0, 0, 3, disp_info.status.get_elapsed_secs());
   vector<double> scroll_origin(disp_info.scroll.begin()+2,
                                disp_info.scroll.begin()+4);
-  draw_text(display, 0, 3*H+5, 128, disp_info.status.get_origin());
+  draw_text(display, 0, 3*H+5, 19, disp_info.status.get_origin());
 
   vector<double> scroll_title(disp_info.scroll.begin(),
                               disp_info.scroll.begin()+2);
-  draw_text(display, 0, 5*H+3, 128, disp_info.status.get_title());
+  draw_text(display, 0, 5*H+3, 19, disp_info.status.get_title());
 
   
  

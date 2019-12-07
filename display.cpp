@@ -180,13 +180,31 @@ void draw_triangle_slider(ArduiPi_OLED &display, int x_start, int y_start,
 void draw_text(ArduiPi_OLED &display, int x_start, int y_start, int max_len,
     string str)
 {
-  if ((int)str.size() > max_len)
+  if ((int)str.size() >= max_len)
+  {
     str.resize(max_len);
+    std::string str2 (" ");
+    std::size_t found = str.find_last_of(str2);
+    str = str.substr(0, found);
+    //if (max_len - found > 3)
+    str.append(" ...");
+  }
+  
+  /*
+  else 
+  {
+    x_start = (19 - (int)(str.size())/2);    
+  }
+  */
+  
+    
 
   display.setTextColor(WHITE);
   display.setCursor(x_start, y_start);
   display.setTextSize(1);
-  print(display, str.c_str());
+  
+  print (display, str.c_str());
+  //print(display, );
 }
 
 // Draw text
