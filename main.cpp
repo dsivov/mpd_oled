@@ -514,12 +514,13 @@ int main(int argc, char **argv)
                string(strerror(errno)));
 
   // Create a pipe to a cava subprocess
+  /*
   string cava_cmd = "cava -p " + config_file_name;
   FILE *from_cava = popen(cava_cmd.c_str(), "r");
   if (from_cava == NULL)
     opts.error("could not start cava program: " +
                string(strerror(errno)));
-
+   */
   // Create a file stream to read cava's raw output from
   FILE *fifo_file = fopen(fifo_path_cava_out.c_str(), "rb");
   if(fifo_file == NULL)
