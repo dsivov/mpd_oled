@@ -52,6 +52,7 @@ ArduiPi_OLED display; // global, for use during signal handling
 void cleanup(void)
 {
   // Clear and close display
+  display.invertDisplay(false);
   display.clearDisplay();
   display.display();
   display.close();
@@ -101,9 +102,13 @@ public:
   int clock_format;               // 0-3: 0,1 - 24h  2,3 - 12h  0,2 - leading 0
   string cava_method;             // fifo, alsa or pulse
   string cava_source;             // Path to FIFO for audio-in, alsa device...
+  double invert;
   bool rotate180;                 // display upside down
   unsigned char i2c_addr;         // number of I2C address
+  int i2c_bus;                    // number of I2C bus
   int reset_gpio;
+  int spi_dc_gpio;                // SPI DC
+  int spi_cs;                     // SPI CS - 0: CS0, 1: CS1
   int source;
 
   OledOpts(): ProgramOpts("mpd_oled", "0.01"),
@@ -116,9 +121,13 @@ public:
       clock_format(0),
       cava_method("fifo"),
       cava_source("/tmp/mpd_oled_fifo"),
+      invert(0),
       rotate180(false),
       i2c_addr(0),
+      i2c_bus(1),
       reset_gpio(25),
+      spi_dc_gpio(OLED_SPI_DC),
+      spi_cs(OLED_SPI_CS0),
       // Default for source of status values depends on the player
       source(
 #ifdef VOLUMIO
@@ -151,7 +160,7 @@ void OledOpts::usage()
 
    fprintf(stdout,
 "  -o <type>  OLED type, specified as a number, from the following:\n");
-  for (int i=0; i<OLED_LAST_OLED;i++)
+  for (int i=0; i<OLED_LAST_OLED; i++)
     if (strstr(oled_type_str[i], "128x64"))
       fprintf(stdout, "      %1d %s\n", i, oled_type_str[i]);
 
@@ -170,8 +179,14 @@ void OledOpts::usage()
 "  -c         cava input method and source (default: '%s,%s')\n"
 "             e.g. 'fifo,/tmp/my_fifo', 'alsa,hw:5,0', 'pulse'\n"
 "  -R         rotate display 180 degrees\n"
+"  -I <val>   invert black/white: n - normal (default), i - invert,\n"
+"             number - switch between n and i with this period (hours), which\n"
+"             may help avoid screen burn\n"
 "  -a <addr>  I2C address, in hex (default: default for OLED type)\n"
-"  -r <gpio>  I2C reset GPIO number, if needed (default: 25)\n"
+"  -B num     I2C bus number (default: 1, giving device /dev/i2c-1)\n"
+"  -r <gpio>  I2C/SPI reset GPIO number, if needed (default: 25)\n"
+"  -D <gpio>  SPI DC GPIO number (default: 24)\n"
+"  -S <gpio>  SPI CS number (default: 0)\n"
 "Example :\n"
 "%s -o 6 use a %s OLED\n"
 "\n",
@@ -189,7 +204,7 @@ void OledOpts::process_command_line(int argc, char **argv)
 
   handle_long_opts(argc, argv);
 
-  while ((c=getopt(argc, argv, ":ho:b:g:f:s:C:c:Ra:r:")) != -1) {
+  while ((c=getopt(argc, argv, ":ho:b:g:f:s:C:c:RI:a:B:r:D:S:")) != -1) {
     if (common_opts(c, optopt))
       continue;
 
@@ -278,12 +293,30 @@ void OledOpts::process_command_line(int argc, char **argv)
       rotate180 = true;
       break;
 
+    case 'I':
+      if (strcmp(optarg, "n") == 0)
+        invert = 0;
+      else if (strcmp(optarg, "i") == 0)
+        invert = -1;
+      else if (read_double(optarg, &invert)) {
+        if(invert <= 0)
+          error("number of hours for period must be positive number", c);
+      }
+      else
+          error("invalid value, should be n, i or a positive number", c);
+      break;
+
     case 'a':
-      if (strlen(optarg) != 2 ||
-          strspn(optarg, "01234567890aAbBcCdDeEfF") != 2 )
+      if (strlen(optarg) != 2 || strspn(optarg, "01234567890aAbBcCdDeEfF") != 2)
         error("I2C address should be two hexadecimal digits", c);
 
       i2c_addr = (unsigned char) strtol(optarg, NULL, 16);
+      break;
+
+    case 'B':
+      print_status_or_exit(read_int(optarg, &i2c_bus), c);
+      if (i2c_bus < 0)
+        error("bus number cannot be negative", c);
       break;
 
     case 'r':
@@ -293,6 +326,19 @@ void OledOpts::process_command_line(int argc, char **argv)
               "GPIO number of the pin that RST is connected to", c);
       break;
 
+    case 'D':
+      print_status_or_exit(read_int(optarg, &spi_dc_gpio), c);
+      if (!isdigit(optarg[0]) || reset_gpio < 0 || reset_gpio > 99)
+        error("probably invalid (not integer in range 0 - 99), specify the\n"
+              "GPIO number of the pin that SPI DC is connected to", c);
+      break;
+
+    case 'S':
+      print_status_or_exit(read_int(optarg, &spi_cs), c);
+      if (spi_cs < 0 || spi_cs > 1)
+        error("SPI CS should be 0 or 1", c);
+      break;
+
     default:
       error("unknown command line error");
     }
@@ -300,7 +346,7 @@ void OledOpts::process_command_line(int argc, char **argv)
 
   if (oled == 0)
     error("must specify a 128x64 oled", 'o');
-  
+
   const int min_spect_width = bars + (bars-1)*gap; // assume bar width = 1
   if (min_spect_width > SPECT_WIDTH)
      error(msg_str(
@@ -344,7 +390,7 @@ string print_config_file(int bars, int framerate,
 void draw_clock(ArduiPi_OLED &display, const display_info &disp_info)
 {
   display.clearDisplay();
-  const int H = 8;  // character height
+  // const int H = 8;  // character height
   const int W = 6;  // character width
   draw_text(display, 22, 0, 16, disp_info.conn.get_ip_addr());
   draw_connection(display, 128-2*W, 0, disp_info.conn);
@@ -418,6 +464,11 @@ void *update_info(void *data)
   }
 };
 
+bool get_invert(double period)
+{
+  return (period > 0) ? (fmod(time(0) / 3600.0, 2 * period) > period) : period;
+}
+
 
 int start_idle_loop(ArduiPi_OLED &display, FILE *fifo_file,
     const OledOpts &opts)
@@ -426,14 +477,14 @@ int start_idle_loop(ArduiPi_OLED &display, FILE *fifo_file,
   const long select_usec = update_sec * 1001000;    // slightly longer, but still less than framerate
   int fifo_fd = fileno(fifo_file);
   Timer timer;
-  
+
   display_info disp_info;
   disp_info.scroll = opts.scroll;
   disp_info.clock_format = opts.clock_format;
   disp_info.spect.init(opts.bars, opts.gap);
   disp_info.status.set_source(opts.source);
   disp_info.status.init();
- 
+
   // Update MPD info in separate thread to avoid stuttering in the spectrum
   // animation.
   pthread_t update_info_thread;
@@ -474,6 +525,7 @@ int start_idle_loop(ArduiPi_OLED &display, FILE *fifo_file,
     if (timer.finished() || num_bars_read) {
        display.clearDisplay();
        pthread_mutex_lock(&disp_info_lock);
+       display.invertDisplay(get_invert(opts.invert));
        draw_display(display, disp_info);
        pthread_mutex_unlock(&disp_info_lock);
        display.display();
@@ -495,8 +547,9 @@ int main(int argc, char **argv)
   opts.process_command_line(argc, argv);
 
   // Set up the OLED doisplay
-  if(!init_display(display, opts.oled, opts.i2c_addr, opts.reset_gpio,
-        opts.rotate180))
+  if (!init_display(display, opts.oled, opts.i2c_addr, opts.i2c_bus,
+                    opts.reset_gpio, opts.spi_dc_gpio, opts.spi_cs,
+                    opts.rotate180))
     opts.error("could not initialise OLED");
 
   // Create a FIFO for cava to write its raw output to
