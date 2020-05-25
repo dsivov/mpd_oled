@@ -1,4 +1,5 @@
 /*
+
    Copyright (c) 2018, Adrian Rossiter
 
    Antiprism - http://www.antiprism.com
@@ -401,21 +402,28 @@ void draw_clock(ArduiPi_OLED &display, const display_info &disp_info)
 
 void draw_spect_display(ArduiPi_OLED &display, const display_info &disp_info)
 {
-  const int H = 8;  // character height
-  const int W = 6;  // character width
-  draw_spectrum(display, 0, 0, SPECT_WIDTH, 32, disp_info.spect);
+  const int H = 6;  // character height
+  const int W = 8;  // character width
+  //draw_spectrum(display, 0, 0, SPECT_WIDTH, 32, disp_info.spect);
   //draw_connection(display, 128-2*W, 0, disp_info.conn);
   //draw_triangle_slider(display, 128-5*W, 1, 11, 6, disp_info.status.get_volume());
   //if (disp_info.status.get_kbitrate() > 0)
   //  draw_text(display, 128-10*W, 0, 4, disp_info.status.get_kbitrate_str());
  
   if (disp_info.status.get_bits() > 0 && disp_info.status.get_samplerate() > 0)
-    draw_text(display, 128-10*W, 0, 9, disp_info.status.get_format_str());
+    //draw_text(display, 128-10*W, 0, 9, disp_info.status.get_format_str());
+    draw_text(display, 2, 1, 8, disp_info.status.get_format_str());
+  draw_text(display, 6*W, 1, 8, "PLAY");
+  draw_text(display, 128-4*W, 1, 8, "DF1");
+  
+  
   
   int clock_offset = (disp_info.clock_format < 2) ? 0 : -2;
   //draw_time(display, 128-10*W+clock_offset, 2*H, 2, disp_info.clock_format);
-  draw_elap(display, 128-10*W+clock_offset, 2*H, 2, disp_info.status.get_total_secs() - disp_info.status.get_elapsed_secs());
-  
+  draw_elap(display, 128-10*W+clock_offset, 2*H, 2, disp_info.status.get_elapsed_secs());
+  draw_text(display, 0, 2*H, 8, "TOTAL");
+  draw_elap(display, 0, 3*H+2, 1, disp_info.status.get_total_secs());
+  /*
   vector<double> scroll_origin(disp_info.scroll.begin()+2,
                                disp_info.scroll.begin()+4);
   draw_text_scroll(display, 0, 4*H+4, 20, disp_info.status.get_origin(),
@@ -426,8 +434,10 @@ void draw_spect_display(ArduiPi_OLED &display, const display_info &disp_info)
   draw_text_scroll(display, 0, 6*H, 20, disp_info.status.get_title(),
       scroll_title, disp_info.text_change.secs());
 
-  draw_solid_slider(display, 0, 7*H+6, 128, 2,
-      100*disp_info.status.get_progress());
+  */
+  draw_text(display, 0, 4*H+7, 22, disp_info.status.get_origin());
+  draw_text(display, 0, 6*H+6, 22, disp_info.status.get_title());
+  draw_text(display, 0, 8*H+5, 22, disp_info.status.get_album());
 }
 
 
@@ -470,12 +480,12 @@ bool get_invert(double period)
 }
 
 
-int start_idle_loop(ArduiPi_OLED &display, FILE *fifo_file,
+int start_idle_loop(ArduiPi_OLED &display, 
     const OledOpts &opts)
 {
   const double update_sec = 1/(0.9*opts.framerate); // default update freq just under framerate
   const long select_usec = update_sec * 1001000;    // slightly longer, but still less than framerate
-  int fifo_fd = fileno(fifo_file);
+  //int fifo_fd = fileno(fifo_file);
   Timer timer;
 
   display_info disp_info;
@@ -502,39 +512,40 @@ int start_idle_loop(ArduiPi_OLED &display, FILE *fifo_file,
   while (true) {
     fd_set set;
     FD_ZERO(&set);
-    FD_SET(fifo_fd, &set);
+    //FD_SET(fifo_fd, &set);
 
     // FIFO read timeout value
+    /*
     struct timeval timeout;
     timeout.tv_sec = 0;
     timeout.tv_usec = select_usec;  // slightly longer than timer
-
+    */
 
     // If there is data read it, otherwise use zero data.
 
-    int num_bars_read = 0;
+    //int num_bars_read = 0;
+    /*
     if(select(FD_SETSIZE, &set, NULL, NULL, &timeout) > 0)
-      num_bars_read = fread(&disp_info.spect.heights[0], sizeof(unsigned char),
-          disp_info.spect.heights.size(), fifo_file);
+      //num_bars_read = fread(&disp_info.spect.heights[0], sizeof(unsigned char),
+      //    disp_info.spect.heights.size(), fifo_file);
     else {
       std::fill(disp_info.spect.heights.begin(), disp_info.spect.heights.end(),
           0);
       usleep(0.1 * 1000000);  // 0.1 sec delay, don't idle too fast if no need
     }
+   */
     // Update display if necessary
-    if (timer.finished() || num_bars_read) {
+    if (timer.finished()) {
        display.clearDisplay();
        pthread_mutex_lock(&disp_info_lock);
        display.invertDisplay(get_invert(opts.invert));
        draw_display(display, disp_info);
        pthread_mutex_unlock(&disp_info_lock);
        display.display();
+       timer.set_timer(update_sec);
     }
 
-    if(timer.finished())
-      timer.set_timer(update_sec);   // Reset the timer
   }
-
   return 0;
 }
 
@@ -552,37 +563,10 @@ int main(int argc, char **argv)
                     opts.rotate180))
     opts.error("could not initialise OLED");
 
-  // Create a FIFO for cava to write its raw output to
-  const string fifo_path_cava_out = msg_str("/tmp/cava_fifo_%d", getpid());
-  unlink(fifo_path_cava_out.c_str());
-  if(mkfifo(fifo_path_cava_out.c_str(), 0666) == -1)
-    opts.error("could not create cava output FIFO for writing: " +
-               string(strerror(errno)));
-
-  // Create a temporary config file for cava
-  string config_file_name = print_config_file(opts.bars, opts.framerate,
-      opts.cava_method, opts.cava_source, fifo_path_cava_out);
-  if (config_file_name == "")
-    opts.error("could not create cava config file: " +
-               string(strerror(errno)));
-
-  // Create a pipe to a cava subprocess
-  /*
-  string cava_cmd = "cava -p " + config_file_name;
-  FILE *from_cava = popen(cava_cmd.c_str(), "r");
-  if (from_cava == NULL)
-    opts.error("could not start cava program: " +
-               string(strerror(errno)));
-   */
-  // Create a file stream to read cava's raw output from
-  FILE *fifo_file = fopen(fifo_path_cava_out.c_str(), "rb");
-  if(fifo_file == NULL)
-    opts.error("could not open cava output FIFO for reading");
-
   init_signals();
   atexit(cleanup);
-  int loop_ret = start_idle_loop(display, fifo_file, opts);
-
+  int loop_ret = start_idle_loop(display, opts);
+  
   if(loop_ret != 0)
     exit(EXIT_FAILURE);
 

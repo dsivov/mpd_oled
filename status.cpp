@@ -347,6 +347,7 @@ void mpd_info::set_vals_mpd(struct mpd_connection *conn)
   struct mpd_song *song;
   if ((song = mpd_recv_song(conn)) != NULL) {
     title = get_tag(song, MPD_TAG_TITLE);
+    album = get_tag(song, MPD_TAG_ALBUM);
 
     // Where does the song come from, just one choice
     enum mpd_tag_type origin_tags[] = {
@@ -492,7 +493,7 @@ string mpd_info::get_format_str() const
 {
    const size_t str_len = 11; 
    char str[str_len];
-   snprintf(str, str_len, "F:%2d/%2d", samplerate/1000,bits);
+   snprintf(str, str_len, "%2d/%2d", samplerate/1000,bits);
    return str;
 }
 
@@ -501,6 +502,8 @@ int mpd_info::get_volume() const { return volume; }
 string mpd_info::get_origin() const { return origin; }
 
 string mpd_info::get_title() const { return title; }
+
+string mpd_info::get_album() const {return album; }
 
 int mpd_info::get_elapsed_secs() const { return song_elapsed_secs; }
 

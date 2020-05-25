@@ -480,7 +480,8 @@ void ArduiPi_OLED::begin( void )
       compins   = 0x12;
       
       if (oled_type == OLED_SH1106_I2C_128x64)
-        contrast = 0x80;
+        //contrast = 0x80;
+          contrast = 0x40;
       else
         contrast = (vcc_type==SSD_External_Vcc?0x9F:0xCF);
     }
