@@ -38,32 +38,7 @@ void print(ArduiPi_OLED &display, const char *str)
     display.write((uint8_t)str[i]);
 }
 
-int draw_spectrum(ArduiPi_OLED &display, int x_start, int y_start, int width,
-    int height, const spect_graph &spect)
-{
-  const int num_bars = spect.heights.size();
-  const int gap = spect.gap;
 
-  int total_bar_pixes = width-(num_bars-1)*gap;
-  int bar_width = total_bar_pixes / num_bars;
-  int bar_height_max = height - 1;
-  int graph_width = num_bars*bar_width + (num_bars-1)*gap;
-
-  if(bar_width < 1 || bar_height_max < 1)  // bars too small to draw
-    return -1;
-
-  // Draw spectrum graph axes
-  display.drawFastHLine(x_start, height - 1 - y_start, graph_width, WHITE);
-  for (int i=0; i<num_bars; i++) {
-    // map vals range to graph ht
-    int val = bar_height_max * spect.heights[i] / 255.0 + 0.5;
-    int x = x_start + i*(bar_width+gap);
-    // int y = y_start+2;
-    if(val)
-       display.fillRect(x, y_start + height - val - 2, bar_width, val, WHITE);
-  }
-  return 0;
-}
 
 // Draw time, according to clock_format: 0-3
 void draw_time(ArduiPi_OLED &display, int start_x, int start_y, int sz,
@@ -90,17 +65,27 @@ void draw_time(ArduiPi_OLED &display, int start_x, int start_y, int sz,
      display.fillRect(start_x+W*N*sz, start_y, sz, sz, WHITE);
 }
 
-void draw_elap(ArduiPi_OLED &display, int start_x, int start_y, int sz, int prog)
+void draw_elap(ArduiPi_OLED &display, int start_x, int start_y, int sz, int format, int prog)
 {
   display.setTextColor(WHITE);
 
   const size_t STR_SZ = 32;
   char str[STR_SZ];
+  int hrs = prog/3600;
   int mins =  prog/60;
   int secs = prog - (mins*60);
-  snprintf(str, STR_SZ, "%02d:%02d", mins, secs);
-
-  display.setCursor(start_x, start_y);
+  if (hrs > 0)
+  {
+    snprintf(str, STR_SZ, "%0d:%02d:%02d",hrs, mins, secs);
+    display.setCursor(start_x, start_y);
+  }
+  else
+  {
+    snprintf(str, STR_SZ, "%02d:%02d", mins, secs);
+    display.setCursor(start_x, start_y);
+  }
+    
+  
   display.setTextSize(sz);
   print(display, str);
 }

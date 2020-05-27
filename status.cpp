@@ -491,9 +491,12 @@ string mpd_info::get_kbitrate_str() const
 
 string mpd_info::get_format_str() const
 {
-   const size_t str_len = 11; 
+   const size_t str_len = 7; 
    char str[str_len];
-   snprintf(str, str_len, "%2d/%2d", samplerate/1000,bits);
+   if (samplerate/1000 < 99)
+       snprintf(str, str_len, "%2d/%2d", samplerate/1000,bits);
+   else 
+       snprintf(str, str_len, "%3d/%2d", samplerate/1000,bits);
    return str;
 }
 

@@ -43,7 +43,7 @@ int draw_spectrum(ArduiPi_OLED &display, int x_start, int y_start, int width,
 void draw_time(ArduiPi_OLED &display, int start_x, int start_y, int sz,
     int clock_format);
 
-void draw_elap(ArduiPi_OLED &display, int start_x, int start_y, int sz,
+void draw_elap(ArduiPi_OLED &display, int start_x, int start_y, int sz, int format,
     int prog);
 
 // Fraw date - DD-MM-YYYY

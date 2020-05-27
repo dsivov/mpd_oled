@@ -38,10 +38,42 @@
 #include <sys/stat.h>
 #include <locale.h>
 #include <errno.h>
+#include <fcntl.h>
+
 
 #include <math.h>
 #include <vector>
 #include <string>
+
+
+#define BCM2708_PERI_BASE        0x20000000
+#define BCM2711_PERI_BASE        0xFE000000
+#define GPIO_BASE                (BCM2711_PERI_BASE + 0x200000) /* GPIO controller */
+
+#include <sys/mman.h>
+
+#define PAGE_SIZE (4*1024)
+#define BLOCK_SIZE (4*1024)
+
+int  mem_fd;
+void *gpio_map;
+
+// I/O access
+volatile unsigned *gpio;
+
+
+// GPIO setup macros. Always use INP_GPIO(x) before using OUT_GPIO(x) or SET_GPIO_ALT(x,y)
+#define INP_GPIO(g) *(gpio+((g)/10)) &= ~(7<<(((g)%10)*3))
+#define OUT_GPIO(g) *(gpio+((g)/10)) |=  (1<<(((g)%10)*3))
+#define SET_GPIO_ALT(g,a) *(gpio+(((g)/10))) |= (((a)<=3?(a)+4:(a)==4?3:2)<<(((g)%10)*3))
+
+#define GPIO_SET *(gpio+7)  // sets   bits which are 1 ignores bits which are 0
+#define GPIO_CLR *(gpio+10) // clears bits which are 1 ignores bits which are 0
+
+#define GET_GPIO(g) (*(gpio+13)&(1<<g)) // 0 if LOW, (1<<g) if HIGH
+
+#define GPIO_PULL *(gpio+37) // Pull up/pull down
+#define GPIO_PULLCLK0 *(gpio+38) // Pull up/pull down clock
 
 using std::vector;
 using std::string;
@@ -387,16 +419,55 @@ string print_config_file(int bars, int framerate,
   return templt;
 }
 
+void setup_io()
+{
+   /* open /dev/mem */
+   if ((mem_fd = open("/dev/mem", O_RDWR|O_SYNC) ) < 0) {
+      printf("can't open /dev/mem \n");
+      exit(-1);
+   }
+
+   /* mmap GPIO */
+   gpio_map = mmap(
+      NULL,             //Any adddress in our space will do
+      BLOCK_SIZE,       //Map length
+      PROT_READ|PROT_WRITE,// Enable reading & writting to mapped memory
+      MAP_SHARED,       //Shared with other processes
+      mem_fd,           //File to map
+      GPIO_BASE         //Offset to GPIO peripheral
+   );
+
+   close(mem_fd); //No need to keep mem_fd open after mmap
+
+   if (gpio_map == MAP_FAILED) {
+      printf("mmap error %d\n", (int)gpio_map);//errno also set!
+      exit(-1);
+   }
+
+   // Always use volatile pointer!
+   gpio = (volatile unsigned *)gpio_map;
+
+
+} // setup_io
+
 // Draw fullscreen 128x64 clock/date
 void draw_clock(ArduiPi_OLED &display, const display_info &disp_info)
 {
   display.clearDisplay();
   // const int H = 8;  // character height
   const int W = 6;  // character width
-  draw_text(display, 22, 0, 16, disp_info.conn.get_ip_addr());
-  draw_connection(display, 128-2*W, 0, disp_info.conn);
+  draw_text(display, 0, 0, 16, disp_info.conn.get_ip_addr());
+  draw_connection(display, 126-2*W, 0, disp_info.conn);
   draw_time(display, 4, 16, 4, disp_info.clock_format);
-  draw_date(display, 32, 56, 1);
+  //draw_date(display, 32, 56, 1);
+  if (GET_GPIO(4) && GET_GPIO(17) )
+      //draw_text(display, 57, 56, 15, "COAX"); 
+      draw_text(display, 45, 56, 15, "OPTICAL"); 
+  else if (GET_GPIO(4) && !GET_GPIO(17))
+      draw_text(display, 57, 56, 15, "COAX");
+  else if(!GET_GPIO(4) && !GET_GPIO(17))
+      draw_text(display, 25, 56, 15, "NETWORK READY");
+     
 }
 
 
@@ -404,25 +475,38 @@ void draw_spect_display(ArduiPi_OLED &display, const display_info &disp_info)
 {
   const int H = 6;  // character height
   const int W = 8;  // character width
-  //draw_spectrum(display, 0, 0, SPECT_WIDTH, 32, disp_info.spect);
-  //draw_connection(display, 128-2*W, 0, disp_info.conn);
-  //draw_triangle_slider(display, 128-5*W, 1, 11, 6, disp_info.status.get_volume());
+  
   //if (disp_info.status.get_kbitrate() > 0)
   //  draw_text(display, 128-10*W, 0, 4, disp_info.status.get_kbitrate_str());
  
   if (disp_info.status.get_bits() > 0 && disp_info.status.get_samplerate() > 0)
+  {
+    draw_text(display, 0, 1, 9, disp_info.status.get_format_str());
+    if (GET_GPIO(22) && !GET_GPIO(27))
+      draw_text(display, 40, 1, 10, "DF:SDSHARP");
+    else if (!GET_GPIO(22) && !GET_GPIO(27))
+      draw_text(display, 40, 1, 10, "DF:SHARP");
+    else if (!GET_GPIO(22) && GET_GPIO(27))
+      draw_text(display, 40, 1, 10, "DF:SLOW");
+    else if (GET_GPIO(22) && GET_GPIO(27))
+      draw_text(display, 40, 1, 10, "DF:SDSLOW");
+  }
     //draw_text(display, 128-10*W, 0, 9, disp_info.status.get_format_str());
-    draw_text(display, 2, 1, 8, disp_info.status.get_format_str());
-  draw_text(display, 6*W, 1, 8, "PLAY");
-  draw_text(display, 128-4*W, 1, 8, "DF1");
-  
-  
+    
+  //draw_text(display, 128-4*W, 1, 8, "DF1");
   
   int clock_offset = (disp_info.clock_format < 2) ? 0 : -2;
   //draw_time(display, 128-10*W+clock_offset, 2*H, 2, disp_info.clock_format);
-  draw_elap(display, 128-10*W+clock_offset, 2*H, 2, disp_info.status.get_elapsed_secs());
-  draw_text(display, 0, 2*H, 8, "TOTAL");
-  draw_elap(display, 0, 3*H+2, 1, disp_info.status.get_total_secs());
+  //draw_elap(display, 128-10*W+clock_offset, 2*H, 2, disp_info.status.get_elapsed_secs());
+  draw_elap(display, 40, 2*H, 2, 0, disp_info.status.get_elapsed_secs());
+  if (disp_info.status.get_state() == MPD_STATE_PLAY)
+     draw_text(display, 0, 2*H, 5, "PLAY");
+  else
+  //if (disp_info.status.get_state() == MPD_STATE_PAUSE)
+     draw_text(display, 0, 2*H, 5, "PAUSE");
+  //else 
+  //   draw_text(display, 0, 2*H, 5, "TOTAL");
+  //draw_elap(display, 0, 3*H+2, 1, 1, disp_info.status.get_total_secs());
   /*
   vector<double> scroll_origin(disp_info.scroll.begin()+2,
                                disp_info.scroll.begin()+4);
@@ -435,16 +519,16 @@ void draw_spect_display(ArduiPi_OLED &display, const display_info &disp_info)
       scroll_title, disp_info.text_change.secs());
 
   */
-  draw_text(display, 0, 4*H+7, 22, disp_info.status.get_origin());
-  draw_text(display, 0, 6*H+6, 22, disp_info.status.get_title());
-  draw_text(display, 0, 8*H+5, 22, disp_info.status.get_album());
+  draw_text(display, 0, 4*H+8, 20, disp_info.status.get_origin());
+  draw_text(display, 0, 6*H+7, 20, disp_info.status.get_title());
+  draw_text(display, 0, 8*H+6, 20, disp_info.status.get_album());
 }
 
 
 void draw_display(ArduiPi_OLED &display, const display_info &disp_info)
 {
   if (disp_info.status.get_state() == MPD_STATE_UNKNOWN ||
-      disp_info.status.get_state() == MPD_STATE_STOP)
+      disp_info.status.get_state() == MPD_STATE_STOP  || !(!GET_GPIO(4) && !GET_GPIO(17)))
     draw_clock(display, disp_info);
   else
     draw_spect_display(display, disp_info);
@@ -543,6 +627,7 @@ int start_idle_loop(ArduiPi_OLED &display,
        pthread_mutex_unlock(&disp_info_lock);
        display.display();
        timer.set_timer(update_sec);
+       usleep(0.1 * 1000000);
     }
 
   }
@@ -553,6 +638,7 @@ int start_idle_loop(ArduiPi_OLED &display,
 int main(int argc, char **argv)
 {
   // Set locale to allow iconv transliteration to US-ASCII
+  setup_io();
   setlocale(LC_CTYPE, "en_US.UTF-8");
   OledOpts opts;
   opts.process_command_line(argc, argv);
