@@ -10,6 +10,8 @@
       <in>audio_multi_fifo.cpp</in>
       <in>bcm2835.c</in>
       <in>bcm2835.h</in>
+      <in>bcm2835_i2c.c</in>
+      <in>bcm2835_i2c.h</in>
       <in>display.cpp</in>
       <in>display.h</in>
       <in>display_info.h</in>

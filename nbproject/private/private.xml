@@ -1,7 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project-private xmlns="http://www.netbeans.org/ns/project-private/1">
+    <code-assistance-data xmlns="http://www.netbeans.org/ns/make-project-private/1">
+        <code-model-enabled>true</code-model-enabled>
+    </code-assistance-data>
     <data xmlns="http://www.netbeans.org/ns/make-project-private/1">
         <activeConfTypeElem>0</activeConfTypeElem>
         <activeConfIndexElem>0</activeConfIndexElem>
     </data>
+    <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
+    <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
+        <group>
+            <file>rfs://volumio@10.0.0.238:22/home/volumio/mpd%5F%6F%6C%65%64%2F%73%74%61%74%75%73%2E%68</file>
+            <file>rfs://volumio@10.0.0.238:22/home/volumio/mpd%5F%6F%6C%65%64%2F%74%69%6D%65%72%2E%63%70%70</file>
+            <file>rfs://volumio@10.0.0.238:22/home/volumio/mpd%5F%6F%6C%65%64%2F%41%72%64%75%69%50%69%5F%4F%4C%45%44%2E%63%70%70</file>
+            <file>rfs://volumio@10.0.0.238:22/home/volumio/mpd%5F%6F%6C%65%64%2F%73%74%61%74%75%73%2E%63%70%70</file>
+            <file>rfs://volumio@10.0.0.238:22/home/volumio/mpd%5F%6F%6C%65%64%2F%41%72%64%75%69%50%69%5F%4F%4C%45%44%2E%68</file>
+            <file>rfs://volumio@10.0.0.238:22/home/volumio/mpd%5F%6F%6C%65%64%2F%64%69%73%70%6C%61%79%2E%63%70%70</file>
+            <file>rfs://volumio@10.0.0.238:22/home/volumio/mpd%5F%6F%6C%65%64%2F%64%69%73%70%6C%61%79%5F%69%6E%66%6F%2E%68</file>
+            <file>rfs://volumio@10.0.0.238:22/home/volumio/mpd%5F%6F%6C%65%64%2F%64%69%73%70%6C%61%79%2E%68</file>
+            <file>rfs://volumio@10.0.0.238:22/home/volumio/mpd%5F%6F%6C%65%64%2F%6D%61%69%6E%2E%63%70%70</file>
+            <file>rfs://volumio@10.0.0.238:22/home/volumio/mpd%5F%6F%6C%65%64%2F%62%63%6D%32%38%33%35%2E%68</file>
+            <file>rfs://volumio@10.0.0.238:22/home/volumio/mpd%5F%6F%6C%65%64%2F%41%64%61%66%72%75%69%74%5F%47%46%58%2E%68</file>
+        </group>
+    </open-files>
 </project-private>

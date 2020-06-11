@@ -72,9 +72,14 @@ void draw_elap(ArduiPi_OLED &display, int start_x, int start_y, int sz, int form
   const size_t STR_SZ = 32;
   char str[STR_SZ];
   int hrs = prog/3600;
-  int mins =  prog/60;
+  int mins =  prog/60 - (hrs*60);
   int secs = prog - (mins*60);
-  if (hrs > 0)
+  if (hrs > 10)
+  {
+    str="LONG PL";
+    display.setCursor(start_x, start_y);
+  }
+  else if (hrs > 0)
   {
     snprintf(str, STR_SZ, "%0d:%02d:%02d",hrs, mins, secs);
     display.setCursor(start_x, start_y);
