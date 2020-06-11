@@ -76,7 +76,7 @@ void draw_elap(ArduiPi_OLED &display, int start_x, int start_y, int sz, int form
   int secs = prog - (mins*60);
   if (hrs > 10)
   {
-    str="LONG PL";
+    strncpy ( str,"LONG PL", sizeof(str));
     display.setCursor(start_x, start_y);
   }
   else if (hrs > 0)
