@@ -300,6 +300,57 @@ string get_volumio_status()
 
   return (httpCode == 200) ? httpData : string();
 }
+
+static int get_mpd_bits(struct mpd_connection *conn)
+{
+  mpd_command_list_begin(conn, true);
+  mpd_send_status(conn);
+  mpd_command_list_end(conn);
+
+  int bits = 0;
+  struct mpd_status *status = mpd_recv_status(conn);
+  if (status != NULL) {
+     int stat = mpd_status_get_state(status);
+     if (stat == MPD_STATE_PLAY || stat == MPD_STATE_PAUSE)
+     {
+         const mpd_audio_format* format = mpd_status_get_audio_format(status);
+        if (format)
+        {
+          //samplerate = format->sample_rate;
+          bits = format->bits;    
+        }
+     }
+     mpd_status_free(status);
+  }
+  mpd_response_finish(conn);
+  return bits;
+}
+
+static int get_mpd_samplerate(struct mpd_connection *conn)
+{
+  mpd_command_list_begin(conn, true);
+  mpd_send_status(conn);
+  mpd_command_list_end(conn);
+
+  int samplerate = 0;
+  struct mpd_status *status = mpd_recv_status(conn);
+  if (status != NULL) {
+     int stat = mpd_status_get_state(status);
+     if (stat == MPD_STATE_PLAY || stat == MPD_STATE_PAUSE)
+     {
+        const mpd_audio_format* format = mpd_status_get_audio_format(status);
+        if (format)
+        {
+          samplerate = format->sample_rate;
+          //bits = format->bits;    
+        }
+     }
+     mpd_status_free(status);
+  }
+  mpd_response_finish(conn);
+  return samplerate;
+}
+
 static int get_mpd_elapsed(struct mpd_connection *conn)
 {
   mpd_command_list_begin(conn, true);
@@ -372,7 +423,8 @@ void mpd_info::set_vals_volumio(struct mpd_connection *conn)
     
     int duration = obj["duration"].isInt() ? obj["duration"].asInt() : 0;
     song_total_secs = duration;
-
+    //samplerate = to_ascii(obj["samplerate"].asString());
+    //bits = to_ascii(obj["bitdepth"].asString());   
     title = to_ascii(obj["title"].asString());
     origin = to_ascii(obj["artist"].asString());
     service = to_ascii(obj["service"].asString());
@@ -383,6 +435,8 @@ void mpd_info::set_vals_volumio(struct mpd_connection *conn)
 
   kbitrate = get_mpd_kbitrate(conn);
   song_elapsed_secs = get_mpd_elapsed(conn);
+  samplerate = get_mpd_samplerate(conn);
+  bits = get_mpd_bits(conn);
   //fprintf(stdout, "ELAPS TIME1:%d\n", song_elapsed_secs);
 }
 
