@@ -31,10 +31,10 @@
 
 #include <mpd/client.h>
 
-#ifdef VOLUMIO
+//#ifdef VOLUMIO
 #include <curl/curl.h>
 #include <jsoncpp/json/json.h>
-#endif // VOLUMIO
+//#endif // VOLUMIO
 
 #include <assert.h>
 #include <stdio.h>
@@ -146,6 +146,109 @@ bool connection_info::init()
 }
   
 
+//    std::size_t callback(
+//            const char* in,
+//            std::size_t size,
+//            std::size_t num,
+//            std::string* out)
+//    {
+//        const std::size_t totalBytes(size * num);
+//        out->append(in, totalBytes);
+//        return totalBytes;
+//    }
+//
+//
+//string get_volumio_status()
+//{
+//  const std::string url("http://localhost:3000/api/v1/getstate");
+//
+//  CURL* curl = curl_easy_init();
+//
+//  // Set remote URL.
+//  curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+//
+//  // Don't bother trying IPv6, which would increase DNS resolution time.
+//  curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
+//
+//  // Time out after 1 second.
+//  curl_easy_setopt(curl, CURLOPT_TIMEOUT, 1);
+//
+//  // Follow HTTP redirects if necessary.
+//  curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+//
+//  // Hook up data handling function.
+//  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, callback);
+//
+//  // Hook up data container (will be passed as the last parameter to the
+//  // callback handling function).  Can be any pointer type, since it will
+//  // internally be passed as a void pointer.
+//  string httpData; 
+//  curl_easy_setopt(curl, CURLOPT_WRITEDATA, &httpData);
+//
+//  // Run our HTTP GET command, capture the HTTP response code, and clean up.
+//  curl_easy_perform(curl);
+//  int httpCode = 0;
+//  curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
+//  curl_easy_cleanup(curl);
+//
+//  return (httpCode == 200) ? httpData : string();
+//}
+
+//void mpd_info::set_vals_volumio(struct mpd_connection *conn)
+//{
+//  string volumio_status = get_volumio_status();
+//  Json::Reader reader;
+//  Json::Value obj;
+//
+//  if (reader.parse(volumio_status, obj)) {
+//    volume = obj["volume"].isInt() ? obj["volume"].asInt() : 0;
+//
+//    string stat = obj["status"].asString();
+//    if (stat == "play")
+//      state = MPD_STATE_PLAY;
+//    else if (stat == "pause")
+//      state = MPD_STATE_PAUSE;
+//    else if (stat == "stop")
+//      state = MPD_STATE_STOP;
+//    else
+//      state = MPD_STATE_UNKNOWN;
+//
+//    int seek = obj["seek"].isInt() ? obj["seek"].asInt() : 0;
+//    song_elapsed_secs = seek / 1000;
+//
+//    int duration = obj["duration"].isInt() ? obj["duration"].asInt() : 0;
+//    song_total_secs = duration;
+//
+//    Vtitle = to_ascii(obj["title"].asString());
+//    Vorigin = to_ascii(obj["artist"].asString());
+//    service = to_ascii(obj["service"].asString());
+// }
+//  else {
+//    init_vals();
+//  }
+//
+//}
+
+//static int get_mpd_kbitrate(struct mpd_connection *conn)
+//{
+//  mpd_command_list_begin(conn, true);
+//  mpd_send_status(conn);
+//  mpd_command_list_end(conn);
+//
+//  int kbitrate = 0;
+//  struct mpd_status *status = mpd_recv_status(conn);
+//  if (status != NULL) {
+//     int stat = mpd_status_get_state(status);
+//     if (stat == MPD_STATE_PLAY || stat == MPD_STATE_PAUSE)
+//        kbitrate = mpd_status_get_kbit_rate(status);
+//     mpd_status_free(status);
+//  }
+//
+//  mpd_response_finish(conn);
+//  return kbitrate;
+//}
+
+
 #ifdef VOLUMIO
 // https://stackoverflow.com/questions/24884490/using-libcurl-and-jsoncpp-to-parse-from-https-webserver
 namespace
@@ -197,6 +300,27 @@ string get_volumio_status()
 
   return (httpCode == 200) ? httpData : string();
 }
+static int get_mpd_elapsed(struct mpd_connection *conn)
+{
+  mpd_command_list_begin(conn, true);
+  mpd_send_status(conn);
+  mpd_command_list_end(conn);
+
+  int song_elapsed_secs = 0;
+  struct mpd_status *status = mpd_recv_status(conn);
+  if (status != NULL) {
+     int stat = mpd_status_get_state(status);
+     if (stat == MPD_STATE_PLAY || stat == MPD_STATE_PAUSE)
+     {
+        song_elapsed_secs = mpd_status_get_elapsed_time(status);
+        //fprintf(stdout, "ELAPS TIME:%d", song_elapsed_secs);
+     }
+     mpd_status_free(status);
+  }
+
+  mpd_response_finish(conn);
+  return song_elapsed_secs;
+}
 
 static int get_mpd_kbitrate(struct mpd_connection *conn)
 {
@@ -205,11 +329,14 @@ static int get_mpd_kbitrate(struct mpd_connection *conn)
   mpd_command_list_end(conn);
 
   int kbitrate = 0;
+  
   struct mpd_status *status = mpd_recv_status(conn);
   if (status != NULL) {
      int stat = mpd_status_get_state(status);
      if (stat == MPD_STATE_PLAY || stat == MPD_STATE_PAUSE)
+     {
         kbitrate = mpd_status_get_kbit_rate(status);
+     }
      mpd_status_free(status);
   }
 
@@ -222,6 +349,7 @@ void mpd_info::set_vals_volumio(struct mpd_connection *conn)
   string volumio_status = get_volumio_status();
   Json::Reader reader;
   Json::Value obj;
+  
 
   if (reader.parse(volumio_status, obj)) {
     volume = obj["volume"].isInt() ? obj["volume"].asInt() : 0;
@@ -237,23 +365,29 @@ void mpd_info::set_vals_volumio(struct mpd_connection *conn)
       state = MPD_STATE_UNKNOWN;
 
     int seek = obj["seek"].isInt() ? obj["seek"].asInt() : 0;
-    song_elapsed_secs = seek / 1000;
-
+    //int seek = obj["seek"].asInt(); 
+    //song_elapsed_secs = seek / 1000;
+    //string test =  to_ascii(obj["seek"].asString());
+    //fprintf(stdout, "ELAPS TIME:%d, SEEK:%s \n", song_elapsed_secs, test.c_str());
+    
     int duration = obj["duration"].isInt() ? obj["duration"].asInt() : 0;
     song_total_secs = duration;
 
     title = to_ascii(obj["title"].asString());
     origin = to_ascii(obj["artist"].asString());
+    service = to_ascii(obj["service"].asString());
  }
   else {
     init_vals();
   }
 
   kbitrate = get_mpd_kbitrate(conn);
+  song_elapsed_secs = get_mpd_elapsed(conn);
+  //fprintf(stdout, "ELAPS TIME1:%d\n", song_elapsed_secs);
 }
 
 #else
-// Dummy function (shouldn't be called)
+//Dummy function (shouldn't be called)
 void mpd_info::set_vals_volumio(struct mpd_connection *conn)
 {
   fprintf(stderr, "Internal error: trying to find Volumio status values but "
@@ -287,6 +421,7 @@ void mpd_info::init_vals()
   volume = 0;
   origin = string();
   title = string();
+  service =  string();
   song_elapsed_secs = 0;
   song_total_secs = 0;
   kbitrate = 0;
@@ -294,10 +429,13 @@ void mpd_info::init_vals()
 
 void mpd_info::set_vals(struct mpd_connection *conn)
 {
-  if (source == SOURCE_VOLUMIO)
-    set_vals_volumio(conn);
+  if (source == SOURCE_VOLUMIO){
+      //set_vals_mpd(conn);
+      set_vals_volumio(conn);
+  }
+     
   else
-    set_vals_mpd(conn);
+      set_vals_mpd(conn);
 }
 
 
@@ -386,7 +524,6 @@ int mpd_info::init()
     set_vals(conn);
   int ret = (mpd_connection_get_error(conn) == MPD_ERROR_SUCCESS);
   mpd_connection_free(conn);
-
 #ifdef VOLUMIO
   string volumio_status = get_volumio_status();
   Json::Reader reader;
@@ -507,6 +644,8 @@ string mpd_info::get_origin() const { return origin; }
 string mpd_info::get_title() const { return title; }
 
 string mpd_info::get_album() const {return album; }
+
+string mpd_info::get_service() const {return service; }
 
 int mpd_info::get_elapsed_secs() const { return song_elapsed_secs; }
 

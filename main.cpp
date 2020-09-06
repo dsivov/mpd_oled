@@ -79,6 +79,7 @@ using std::vector;
 using std::string;
 
 const int SPECT_WIDTH = 64;
+int state_Super_Slow = 0;
 
 ArduiPi_OLED display; // global, for use during signal handling
 
@@ -447,7 +448,7 @@ void draw_clock(ArduiPi_OLED &display, const display_info &disp_info) {
     const int W = 6; // character width
     draw_text(display, 0, 0, 16, disp_info.conn.get_ip_addr());
     draw_connection(display, 126 - 2 * W, 0, disp_info.conn);
-    draw_time(display, 4, 16, 4, disp_info.clock_format);
+    //draw_time(display, 4, 16, 4, disp_info.clock_format);
     //draw_date(display, 32, 56, 1);
     if (GET_GPIO(4) && GET_GPIO(17))
         //draw_text(display, 57, 56, 15, "COAX"); 
@@ -455,14 +456,31 @@ void draw_clock(ArduiPi_OLED &display, const display_info &disp_info) {
     else if (GET_GPIO(4) && !GET_GPIO(17))
         draw_text(display, 57, 56, 15, "COAX");
     else if (!GET_GPIO(4) && !GET_GPIO(17))
-        draw_text(display, 25, 56, 15, "NETWORK READY");
+    {
+//         if (disp_info.status.get_service().compare("webradio"))
+//             draw_text(display, 35, 56, 15, "WEB RADIO");
+//         else if (disp_info.status.get_service().compare("volspotconnect2")) 
+//              draw_text(display, 45, 56, 15, "SPOTIFY");
+//         else
+              draw_text(display, 25, 56, 15, "NETWORK READY");
+    }
+    //FILTERS
+    if (GET_GPIO(22) && !GET_GPIO(27))
+        draw_text(display, 40, 20, 10, "DF:SDSHARP");
+    else if (!GET_GPIO(22) && !GET_GPIO(27))
+        draw_text(display, 40, 20, 10, "DF:SHARP");
+    else if (!GET_GPIO(22) && GET_GPIO(27))
+        draw_text(display, 40, 20, 10, "DF:SLOW");
+    else if (GET_GPIO(22) && GET_GPIO(27))
+        draw_text(display, 40, 20, 10, "DF:SDSLOW");
+   
 
 }
 
 void draw_spect_display(ArduiPi_OLED &display, const display_info &disp_info) {
     const int H = 6; // character height
     const int W = 8; // character width
-
+    
     //if (disp_info.status.get_kbitrate() > 0)
     //  draw_text(display, 128-10*W, 0, 4, disp_info.status.get_kbitrate_str());
 
@@ -481,7 +499,21 @@ void draw_spect_display(ArduiPi_OLED &display, const display_info &disp_info) {
     int clock_offset = (disp_info.clock_format < 2) ? 0 : -2;
     //draw_time(display, 128-10*W+clock_offset, 2*H, 2, disp_info.clock_format);
     //draw_elap(display, 128-10*W+clock_offset, 2*H, 2, disp_info.status.get_elapsed_secs());
-    draw_elap(display, 40, 2 * H, 2, 0, disp_info.status.get_elapsed_secs());
+    if (disp_info.status.get_service().compare("webradio") == 0)
+    {
+       draw_text(display, 40, 3 * H, 12, "SRC:WEBRADIO");
+       //fprintf(stdout, "WEBRADIO\n");
+    }
+    else if (disp_info.status.get_service().compare("volspotconnect2") == 0)
+    {
+       draw_text(display, 40, 3 * H, 12, "SRC:SPOTIFY");
+       //fprintf(stdout, "SPOTIFY\n");
+    }
+    else if  (disp_info.status.get_service().compare("mpd") == 0)
+    {
+       draw_elap(display, 40, 2 * H, 2, 0, disp_info.status.get_elapsed_secs());
+       //fprintf(stdout, "MPD\n");
+    }
     if (disp_info.status.get_state() == MPD_STATE_PLAY)
         draw_text(display, 0, 2 * H, 5, "PLAY");
     else

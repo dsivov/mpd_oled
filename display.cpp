@@ -72,8 +72,9 @@ void draw_elap(ArduiPi_OLED &display, int start_x, int start_y, int sz, int form
   const size_t STR_SZ = 32;
   char str[STR_SZ];
   int hrs = prog/3600;
+  int mins_orig = prog/60;
   int mins =  prog/60 - (hrs*60);
-  int secs = prog - (mins*60);
+  int secs = prog - (mins_orig*60);
   if (hrs > 10)
   {
     strncpy ( str,"LONG PL", sizeof(str));
