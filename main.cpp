@@ -518,6 +518,8 @@ void draw_spect_display(ArduiPi_OLED &display, const display_info &disp_info) {
         draw_text(display, 0, 2 * H, 5, "PLAY");
     else
         draw_text(display, 0, 2 * H, 5, "PAUSE");
+    std::string trackType = disp_info.status.get_trackType();
+    draw_text(display, 0, 3 * H + 3, 5, trackType);
     /* scroll example
     vector<double> scroll_title(disp_info.scroll.begin(),
                                 disp_info.scroll.begin()+2);
@@ -525,9 +527,16 @@ void draw_spect_display(ArduiPi_OLED &display, const display_info &disp_info) {
         scroll_title, disp_info.text_change.secs());
 
      */
+    std::string alb_and_title = disp_info.status.get_title() + " " + disp_info.status.get_album();
     draw_text(display, 0, 4 * H + 8, 20, disp_info.status.get_origin());
-    draw_text(display, 0, 6 * H + 7, 20, disp_info.status.get_title());
-    draw_text(display, 0, 8 * H + 6, 20, disp_info.status.get_album());
+    //draw_text(display, 0, 6 * H + 7, 20, disp_info.status.get_title());
+    //draw_text(display, 0, 8 * H + 6, 20, disp_info.status.get_album());
+    vector<double> scroll_title(disp_info.scroll.begin(),
+                                disp_info.scroll.begin()+2);
+    draw_text_scroll(display, 0, 6*H + 7, 20, alb_and_title,
+        scroll_title, disp_info.text_change.secs());
+    draw_solid_slider(display, 0, 9*H + 6, 128, 2,
+        100*disp_info.status.get_progress());
 }
 
 void draw_display(ArduiPi_OLED &display, const display_info &disp_info) {

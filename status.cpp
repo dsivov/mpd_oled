@@ -428,6 +428,8 @@ void mpd_info::set_vals_volumio(struct mpd_connection *conn)
     title = to_ascii(obj["title"].asString());
     origin = to_ascii(obj["artist"].asString());
     service = to_ascii(obj["service"].asString());
+    album = to_ascii(obj["album"].asString());
+    trackType = to_ascii(obj["trackType"].asString());
  }
   else {
     init_vals();
@@ -476,6 +478,8 @@ void mpd_info::init_vals()
   origin = string();
   title = string();
   service =  string();
+  trackType = string(); 
+  album = string();
   song_elapsed_secs = 0;
   song_total_secs = 0;
   kbitrate = 0;
@@ -700,6 +704,8 @@ string mpd_info::get_title() const { return title; }
 string mpd_info::get_album() const {return album; }
 
 string mpd_info::get_service() const {return service; }
+
+string mpd_info::get_trackType() const {return trackType; }
 
 int mpd_info::get_elapsed_secs() const { return song_elapsed_secs; }
 

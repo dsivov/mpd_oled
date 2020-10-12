@@ -36,6 +36,7 @@ private:
   std::string title;
   std::string album;
   std::string service;
+  std::string trackType;
   int song_elapsed_secs;
   int song_total_secs;
   int kbitrate;
@@ -63,6 +64,7 @@ public:
   std::string get_title() const;      // Song title
   std::string get_album() const;
   std::string get_service() const;
+  std::string get_trackType() const;
   int get_elapsed_secs() const;       // Elapsed time of song in seconds
   int get_total_secs() const;         // Total time of song in seconds
   int get_kbitrate() const;           // KBitrate
