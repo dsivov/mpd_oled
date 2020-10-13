@@ -552,7 +552,7 @@ namespace {
 }
 
 void *update_info(void *data) {
-    const float delay_secs = 0.3;
+    const float delay_secs = 0.1;
     display_info *disp_info_orig = (display_info *) data;
     while (true) {
         pthread_mutex_lock(&disp_info_lock);
